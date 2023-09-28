@@ -12,6 +12,7 @@ builder.Services.AddSwaggerGen();
 var configuration = builder.Configuration;
 builder.Services.Configure<WasabiCredentials>(configuration.GetSection("WasabiKeys"));
 builder.Services.AddScoped<FileUploader>();
+builder.Services.AddScoped<IResponseService, ResponseService>();
 var app = builder.Build();
 
 
@@ -25,10 +26,26 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 
-app.MapPost("/uploadVideo", async (FileUploader fileUploader) =>
+app.MapPost("/uploadVideo", async (HttpContext context,FileUploader fileUploader) =>
 {
-    return Results.Ok(await fileUploader.UploadVideo());
-}).WithTags("Uploads");
+    try
+    {
+        var form = await context.Request.ReadFormAsync();
+        if (!form.Files.Any())
+        {
+            return Results.BadRequest("Please attach file for uploading");
+        }
+        var file = form.Files[0];
+        return Results.Ok(await fileUploader.UploadVideo(file));
+    }
+    catch(Exception ex)
+    {
+        Console.WriteLine(ex.ToString());
+        return Results.Problem("Unable to Upload your video at this point");
+    }
+   
+}).WithTags("Uploads")
+.Produces(200).Produces(400).Produces(500).Produces<APIResponse<bool>>();
 
 app.Run();
 
