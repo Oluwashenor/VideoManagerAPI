@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Bontempi-B3-C5-new.wav
+/Bontempi-B3-C5.wav
+/doom-new.wav
+/doom.mp3
+/female.wav
+/ggml-base.bin
