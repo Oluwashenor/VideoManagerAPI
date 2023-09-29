@@ -23,24 +23,53 @@
 						{
 							"key": "files",
 							"type": "file",
-							"src": []
+							"src": "/C:/Users/adesh/Downloads/site1.PublishSettings"
 						}
 					]
 				},
 				"url": {
-					"raw": "https://localhost:7056/api/uploadVideo",
-					"protocol": "https",
+					"raw": "{{remote}}api/uploadVideo",
 					"host": [
-						"localhost"
+						"{{remote}}api"
 					],
-					"port": "7056",
 					"path": [
-						"api",
 						"uploadVideo"
 					]
 				}
 			},
 			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "local",
+			"value": "https://localhost:7056/",
+			"type": "string"
+		},
+		{
+			"key": "remote",
+			"value": "http://oluwashenor-001-site1.ftempurl.com/",
+			"type": "string"
 		}
 	]
 }
