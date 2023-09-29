@@ -22,5 +22,22 @@ namespace VideoManagerAPI.Services
             }
             return audio;
         }
+
+        public static string ConvertFormVideoToAudio(IFormFile video, string audio)
+        {
+            string tempVideoFilePath = Path.Combine("", Path.GetTempFileName());
+            using (var fileStream = new FileStream(tempVideoFilePath, FileMode.Create))
+            {
+                video.CopyTo(fileStream);
+            }
+            using (var videoStream = video.OpenReadStream())
+            {
+                using (var reader = new MediaFoundationReader(tempVideoFilePath))
+                {
+                    MediaFoundationEncoder.EncodeToMp3(reader, audio);
+                }
+            }
+            return audio;
+        }
     }
 }

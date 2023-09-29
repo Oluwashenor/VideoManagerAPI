@@ -17,8 +17,8 @@ namespace VideoManagerAPI.Services
             List<Transcript> transcripts = new List<Transcript>();
             var ggmlType = GgmlType.Base;
             var modelFileName = "ggml-base.bin";
-            var wavFileName = "doom.mp3";
-            var newWavFileName = "doom-new.wav";
+            var wavFileName = file;
+            var newWavFileName = $"new-{file}";
 
             // This section detects whether the "ggml-base.bin" file exists in our project disk. If it doesn't, it downloads it from the internet
             if (!File.Exists(modelFileName))

@@ -23,9 +23,10 @@ namespace VideoManagerAPI.Repository
 
         public async Task<APIResponse<string>> Processor(IFormFile file){
 
-            var uploadFile = await UploadVideo(file);
-          //  var generateTranscript = MediaService.ConvertVideoToAudio(file, "sample.wav");
-            return uploadFile;
+            //var uploadFile = await UploadVideo(file);
+            var generateAudio = MediaService.ConvertFormVideoToAudio(file, $"new{file.FileName}.wav");
+            var generateTranscripts = _transcriptionService.ProcessTranscript(generateAudio);
+            return default;
         }
 
         private async Task<APIResponse<string>> UploadVideo(IFormFile file)
