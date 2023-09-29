@@ -2,7 +2,6 @@
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using Microsoft.Extensions.Options;
-using System.Net.Mime;
 using VideoManagerAPI.Models;
 using VideoManagerAPI.Services;
 

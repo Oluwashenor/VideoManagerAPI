@@ -38,9 +38,9 @@ namespace VideoManagerAPI.Services
                 Console.WriteLine("File not found");
             }
 
-            var formattedAudio = MediaService.ConvertAudio(wavFileName, newWavFileName);
+           // var formattedAudio = MediaService.ConvertAudio(wavFileName, newWavFileName);
 
-            using var fileStream = File.OpenRead(newWavFileName);
+            using var fileStream = File.OpenRead(wavFileName);
 
             // This section processes the audio file and prints the results (start time, end time and text) to the console.
             await foreach (var result in processor.ProcessAsync(fileStream))

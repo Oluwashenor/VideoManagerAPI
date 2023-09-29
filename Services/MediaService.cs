@@ -37,7 +37,7 @@ namespace VideoManagerAPI.Services
                     MediaFoundationEncoder.EncodeToMp3(reader, audio);
                 }
             }
-            return audio;
+            return ConvertAudio(audio, $"formatted-{audio}");
         }
     }
 }
