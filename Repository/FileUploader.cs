@@ -20,8 +20,9 @@ namespace VideoManagerAPI.Repository
         }
         public async Task<APIResponse<string>> UploadVideo(IFormFile file)
         {
+            var allowedFormats = new List<string>() { "video/mp4" };
             if(file == null) return _responseService.ErrorResponse<string>("File cannot be empty");
-            if (file.ContentType != "video/mp4") return _responseService.ErrorResponse<string>("File has to be in video format");
+            if (!allowedFormats.Contains(file.ContentType)) return _responseService.ErrorResponse<string>("File has to be in video format");
             var fileSizeInMb = file.Length / (1024.0 * 1024.0);
             if(fileSizeInMb > 50.0) return _responseService.ErrorResponse<string>("You can only upload videos less than or equal to 50 MB");
             string accessKey = _options.Value.AccessKey;

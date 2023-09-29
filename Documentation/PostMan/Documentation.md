@@ -2,7 +2,7 @@
 
 ## Upload Video
 
-- **URL** - https://localhost:7056/api/uploadVideo
+- **URL** - http://oluwashenor-001-site1.ftempurl.com/api/uploadVideo
 - **Method** - POST
 - **Include Header** 
     ```
@@ -12,3 +12,5 @@
   ```
   files - (attach your file to this key)
   ```
+- **N.B File Cannot be larger than 50MB**
+
