@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
 using VideoManagerAPI.Models;
 using VideoManagerAPI.Repository;
@@ -8,6 +9,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
+});
 
 var configuration = builder.Configuration;
 builder.Services.Configure<WasabiCredentials>(configuration.GetSection("WasabiKeys"));
@@ -41,7 +47,7 @@ app.MapPost("/uploadVideo", async (HttpContext context,FileUploader fileUploader
     catch(Exception ex)
     {
         Console.WriteLine(ex.ToString());
-        return Results.Problem("Unable to Upload your video at this point");
+        return Results.Problem($"Unable to Upload your video at this point {ex.Message.ToString()}");
     }
    
 }).WithTags("Uploads")
