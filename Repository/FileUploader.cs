@@ -4,6 +4,7 @@ using Amazon.S3.Transfer;
 using Microsoft.Extensions.Options;
 using System.Net.Mime;
 using VideoManagerAPI.Models;
+using VideoManagerAPI.Services;
 
 namespace VideoManagerAPI.Repository
 {
@@ -11,14 +12,23 @@ namespace VideoManagerAPI.Repository
     {
         private readonly IOptions<WasabiCredentials> _options;
         private readonly IResponseService _responseService;
+        private readonly ITranscriptionService _transcriptionService;
 
-        public FileUploader(IOptions<WasabiCredentials> options, IResponseService responseService)
+        public FileUploader(IOptions<WasabiCredentials> options, IResponseService responseService, ITranscriptionService transcriptionService)
         {
             _options = options;
             _responseService = responseService;
-
+            _transcriptionService = transcriptionService;
         }
-        public async Task<APIResponse<string>> UploadVideo(IFormFile file)
+
+        public async Task<APIResponse<string>> Processor(IFormFile file){
+
+            var uploadFile = await UploadVideo(file);
+          //  var generateTranscript = MediaService.ConvertVideoToAudio(file, "sample.wav");
+            return uploadFile;
+        }
+
+        private async Task<APIResponse<string>> UploadVideo(IFormFile file)
         {
             var allowedFormats = new List<string>() { "video/mp4" };
             if(file == null) return _responseService.ErrorResponse<string>("File cannot be empty");

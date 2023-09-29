@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
 using VideoManagerAPI.Models;
 using VideoManagerAPI.Repository;
+using VideoManagerAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,7 @@ var configuration = builder.Configuration;
 builder.Services.Configure<WasabiCredentials>(configuration.GetSection("WasabiKeys"));
 builder.Services.AddScoped<FileUploader>();
 builder.Services.AddScoped<IResponseService, ResponseService>();
+builder.Services.AddScoped<ITranscriptionService, TranscriptionService>();
 var app = builder.Build();
 
 
@@ -42,7 +44,7 @@ app.MapPost("/api/uploadVideo", async (HttpContext context,FileUploader fileUplo
             return Results.BadRequest("Please attach file for uploading");
         }
         var file = form.Files[0];
-        return Results.Ok(await fileUploader.UploadVideo(file));
+        return Results.Ok(await fileUploader.Processor(file));
     }
     catch(Exception ex)
     {
@@ -52,5 +54,11 @@ app.MapPost("/api/uploadVideo", async (HttpContext context,FileUploader fileUplo
    
 }).WithTags("Uploads")
 .Produces(200).Produces(400).Produces(500).Produces<APIResponse<string>>();
+
+//app.MapGet("/api/ProcessAudio", async (ITranscriptionService transcriptionService) =>
+//{
+//    await transcriptionService.ProcessTranscript();
+//    return Results.Ok();
+//});
 
 app.Run();
