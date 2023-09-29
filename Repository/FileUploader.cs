@@ -35,21 +35,17 @@ namespace VideoManagerAPI.Repository
             });
             using (var fileStream = file.OpenReadStream())
             {
-                // Create a transfer utility
+                var guid = Guid.NewGuid().ToString();
                 var fileTransferUtility = new TransferUtility(s3Client);
-                // Upload the file to Wasabi
-                await fileTransferUtility.UploadAsync(fileStream, bucketName, file.FileName);
-
+                await fileTransferUtility.UploadAsync(fileStream, bucketName, (guid+file.FileName));
                 Console.WriteLine("File upload completed successfully.");
             }
-
             var url = new GetPreSignedUrlRequest
             {
                 BucketName = bucketName,
                 Key = file.FileName,
                 Expires = DateTime.UtcNow.AddHours(12),
             };
-
             string preSignedUrl = s3Client.GetPreSignedURL(url);
             return _responseService.SuccessResponse(preSignedUrl);
         }

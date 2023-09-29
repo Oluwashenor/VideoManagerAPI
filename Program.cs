@@ -32,7 +32,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 
-app.MapPost("/uploadVideo", async (HttpContext context,FileUploader fileUploader) =>
+app.MapPost("/api/uploadVideo", async (HttpContext context,FileUploader fileUploader) =>
 {
     try
     {
@@ -47,11 +47,10 @@ app.MapPost("/uploadVideo", async (HttpContext context,FileUploader fileUploader
     catch(Exception ex)
     {
         Console.WriteLine(ex.ToString());
-        return Results.Problem($"Unable to Upload your video at this point {ex.Message.ToString()}");
+        return Results.Problem($"Upload Failed : {ex.Message.ToString()}");
     }
    
 }).WithTags("Uploads")
-.Produces(200).Produces(400).Produces(500).Produces<APIResponse<bool>>();
+.Produces(200).Produces(400).Produces(500).Produces<APIResponse<string>>();
 
 app.Run();
-
