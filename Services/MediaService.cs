@@ -4,14 +4,17 @@ namespace VideoManagerAPI.Services
 {
     public class MediaService
     {
-        public static string ConvertAudio(string audio, string formattedAudio)
+        public static async Task<string> ConvertMp3ToWave(string mp3, string wav)
         {
-            using (var reader = new AudioFileReader(audio))
+            using (var reader = new AudioFileReader(mp3))
             {
-                var resampler = new MediaFoundationResampler(reader, new WaveFormat(16000, reader.WaveFormat.Channels));
-                WaveFileWriter.CreateWaveFile(formattedAudio, resampler);
+                using var resampler = new MediaFoundationResampler(reader, new WaveFormat(16000, reader.WaveFormat.Channels));
+                await Task.Run(() =>
+                {
+                    WaveFileWriter.CreateWaveFile(wav, resampler);
+                });
             }
-            return formattedAudio;
+            return wav;
         }
 
         public static string ConvertVideoToAudio(string video, string audio)
@@ -23,21 +26,24 @@ namespace VideoManagerAPI.Services
             return audio;
         }
 
-        public static string ConvertFormVideoToAudio(IFormFile video, string audio)
+        public static async Task<string> ConvertFormVideoToAudio(IFormFile video)
         {
             string tempVideoFilePath = Path.Combine("", Path.GetTempFileName());
+            string fileName = Path.GetFileNameWithoutExtension(video.FileName);
+            string audiomp3 = $"{fileName}.mp3";
+            string audioWav = $"{fileName}.wav";
             using (var fileStream = new FileStream(tempVideoFilePath, FileMode.Create))
             {
-                video.CopyTo(fileStream);
+               await video.CopyToAsync(fileStream);
             }
             using (var videoStream = video.OpenReadStream())
             {
                 using (var reader = new MediaFoundationReader(tempVideoFilePath))
                 {
-                    MediaFoundationEncoder.EncodeToMp3(reader, audio);
+                    MediaFoundationEncoder.EncodeToMp3(reader, audiomp3);
                 }
             }
-            return ConvertAudio(audio, $"formatted-{audio}");
+            return await ConvertMp3ToWave(audiomp3, audioWav);
         }
     }
 }

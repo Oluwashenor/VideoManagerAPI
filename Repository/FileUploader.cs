@@ -20,21 +20,21 @@ namespace VideoManagerAPI.Repository
             _transcriptionService = transcriptionService;
         }
 
-        public async Task<APIResponse<string>> Processor(IFormFile file){
-
-            //var uploadFile = await UploadVideo(file);
-            var generateAudio = MediaService.ConvertFormVideoToAudio(file, $"new{file.FileName}.wav");
-            var generateTranscripts = _transcriptionService.ProcessTranscript(generateAudio);
+        public async Task<APIResponse<string>> Processor(IFormFile file)
+        {
+            var allowedFormats = new List<string>() { "video/mp4" };
+            if (file == null) return _responseService.ErrorResponse<string>("File cannot be empty");
+            if (!allowedFormats.Contains(file.ContentType)) return _responseService.ErrorResponse<string>("File has to be in video format");
+            var fileSizeInMb = file.Length / (1024.0 * 1024.0);
+            if (fileSizeInMb > 50.0) return _responseService.ErrorResponse<string>("You can only upload videos less than or equal to 50 MB");
+           // var uploadFile = await UploadVideo(file);
+            var audioPath =  await MediaService.ConvertFormVideoToAudio(file);
+            var generateTranscripts = await _transcriptionService.ProcessTranscript(audioPath);
             return default;
         }
 
         private async Task<APIResponse<string>> UploadVideo(IFormFile file)
         {
-            var allowedFormats = new List<string>() { "video/mp4" };
-            if(file == null) return _responseService.ErrorResponse<string>("File cannot be empty");
-            if (!allowedFormats.Contains(file.ContentType)) return _responseService.ErrorResponse<string>("File has to be in video format");
-            var fileSizeInMb = file.Length / (1024.0 * 1024.0);
-            if(fileSizeInMb > 50.0) return _responseService.ErrorResponse<string>("You can only upload videos less than or equal to 50 MB");
             string accessKey = _options.Value.AccessKey;
             string secretKey = _options.Value.SecretKey;
             string bucketName = _options.Value.BucketName;

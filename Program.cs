@@ -55,10 +55,10 @@ app.MapPost("/api/uploadVideo", async (HttpContext context,FileUploader fileUplo
 }).WithTags("Uploads")
 .Produces(200).Produces(400).Produces(500).Produces<APIResponse<string>>();
 
-//app.MapGet("/api/ProcessAudio", async (ITranscriptionService transcriptionService) =>
-//{
-//    await transcriptionService.ProcessTranscript();
-//    return Results.Ok();
-//});
+app.MapGet("/api/ProcessAudio", async (ITranscriptionService transcriptionService) =>
+{
+    await transcriptionService.ProcessTranscript(@"Grumpy Monkey Says No- Bedtime Story.mp3");
+    return Results.Ok();
+});
 
 app.Run();
