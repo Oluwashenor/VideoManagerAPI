@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Mvc;
 using VideoManagerAPI.Models;
+using VideoManagerAPI.Models.DTO;
 using VideoManagerAPI.Repository;
 using VideoManagerAPI.Services;
 
@@ -21,6 +21,14 @@ builder.Services.Configure<WasabiCredentials>(configuration.GetSection("WasabiKe
 builder.Services.AddScoped<FileUploader>();
 builder.Services.AddScoped<IResponseService, ResponseService>();
 builder.Services.AddScoped<ITranscriptionService, TranscriptionService>();
+builder.Services.AddScoped<IStreamingService, StreamingService>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader());
+});
 var app = builder.Build();
 
 
@@ -31,6 +39,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 
 
@@ -60,5 +69,25 @@ app.MapGet("/api/ProcessAudio", async (ITranscriptionService transcriptionServic
     await transcriptionService.ProcessTranscript(@"Grumpy Monkey Says No- Bedtime Story.mp3");
     return Results.Ok();
 });
+
+app.MapGet("/api/startStream", async (IStreamingService streamingService) =>
+{
+    var id = streamingService.StartStream();
+    return Results.Ok(id);
+}).WithTags("Streaming")
+.Produces(200).Produces(500).Produces<APIResponse<string>>();
+
+app.MapGet("/api/stopStream/{id}", async (IStreamingService streamingService, string id) =>
+{
+    return Results.Ok(streamingService.StopStream(id));
+}).WithTags("Streaming")
+.Produces(200).Produces(500).Produces<APIResponse<List<ChunkUploadDTO>>>();
+
+app.MapPost("/api/uploadStream", async (ChunkUploadDTO model, IStreamingService streamingService) =>
+{
+    var uploadStream = streamingService.UploadStream(model);
+    return Results.Ok(model.Id);
+}).WithTags("Streaming")
+.Produces(200).Produces(500).Produces<APIResponse<string>>();
 
 app.Run();
