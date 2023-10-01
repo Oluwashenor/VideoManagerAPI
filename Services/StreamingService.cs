@@ -33,12 +33,23 @@ namespace VideoManagerAPI.Services
             List<byte> videoBytesList = new List<byte>();
             foreach (var chunk in streamChunks)
             {
-                var formattedString = chunk.ChunkString.Replace("data:video/x-matroska;codecs=avc1;base64,", "");
+                //var formattedString = chunk.ChunkString.Replace("data:video/x-matroska;codecs=avc1,opus;base64,", "");
+                var splitedChunk = chunk.ChunkString?.Split("base64,");
+                var formattedString = splitedChunk[1];
                 byte[] chunkBytes = Convert.FromBase64String(formattedString);
                 videoBytesList.AddRange(chunkBytes);
             }
 
-            File.WriteAllBytes("myvideo.mkv", videoBytesList.ToArray());
+            File.WriteAllBytes("myvideo.mp4", videoBytesList.ToArray());
+
+
+            //using (FileStream fs = File.Create("mynewVideo.mp4"))
+            //{
+            //    fs.Write(videoBytesList.ToArray(), 0, videoBytesList.Count);
+            //}
+
+            var generateAudio = MediaService.ConvertVideoToAudio("Grumpy Monkey Says No- Bedtime Story.mp4", "grump.wma");
+
             return true;
         }
 

@@ -7,9 +7,18 @@ namespace VideoManagerAPI.Services
     public interface ITranscriptionService
     {
         Task<List<Transcript>> ProcessTranscript(string file);
+        Task<List<Transcript>> TranscribeVideo(string VideoPath);
     }
     public class TranscriptionService : ITranscriptionService
     {
+
+        public async Task<List<Transcript>> TranscribeVideo(string VideoPath)
+        {
+            var audioName = Path.GetFileNameWithoutExtension(VideoPath);
+            var wmafile = MediaService.ConvertVideoToAudio(VideoPath, $"{audioName}.wma");
+            var wavFile = await MediaService.ConvertMp3ToWave(wmafile, $"{audioName}.wav");
+            return await ProcessTranscript(wavFile);
+        }
 
         public async Task<List<Transcript>> ProcessTranscript(string wavFile)
         {

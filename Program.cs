@@ -68,7 +68,14 @@ app.MapGet("/api/ProcessAudio", async (ITranscriptionService transcriptionServic
 {
     await transcriptionService.ProcessTranscript(@"Grumpy Monkey Says No- Bedtime Story.mp3");
     return Results.Ok();
-});
+}).WithTags("Processings");
+
+app.MapGet("/api/ProcessVideo", async (ITranscriptionService transcriptionService) =>
+{
+    await transcriptionService.TranscribeVideo("Grumpy Monkey Says No- Bedtime Story.mp4");
+    //MediaService.ConvertVideoToAudio("Grumpy Monkey Says No- Bedtime Story.mp4", "grump.wma");
+    return Results.Ok();
+}).WithTags("Processings");
 
 app.MapGet("/api/startStream", async (IStreamingService streamingService) =>
 {
