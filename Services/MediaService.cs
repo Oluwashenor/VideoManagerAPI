@@ -31,13 +31,22 @@ namespace VideoManagerAPI.Services
 
         public static string ExtractAudioFromVideo(string videoFilePath, string audio)
          {
-            var filePath = Path.Combine("uploads", audio);
-            using (var reader = new MediaFoundationReader(videoFilePath))
-                 {
-                     var pcmStream = WaveFormatConversionStream.CreatePcmStream(reader); // 16 kHz, 16-bit, mono
-                     WaveFileWriter.CreateWaveFile(filePath, pcmStream);
-                 }
-            return filePath;
+            try
+            {
+                var filePath = Path.Combine("uploads", audio);
+                using (var reader = new MediaFoundationReader(videoFilePath))
+                {
+                    var pcmStream = WaveFormatConversionStream.CreatePcmStream(reader); // 16 kHz, 16-bit, mono
+                    WaveFileWriter.CreateWaveFile(filePath, pcmStream);
+                }
+                return filePath;
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+                return default;
+            }
+            
          }
 
         public static async Task<string> ConvertFormVideoToAudio(IFormFile video)

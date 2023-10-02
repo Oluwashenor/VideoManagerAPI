@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using VideoManagerAPI.Data;
 using VideoManagerAPI.Models;
 using VideoManagerAPI.Models.DTO;
 using VideoManagerAPI.Repository;
@@ -22,6 +24,8 @@ builder.Services.AddScoped<FileUploader>();
 builder.Services.AddScoped<IResponseService, ResponseService>();
 builder.Services.AddScoped<ITranscriptionService, TranscriptionService>();
 builder.Services.AddScoped<IStreamingService, StreamingService>();
+builder.Services.AddDbContext<AppDbContext>(options =>
+options.UseSqlite(configuration.GetConnectionString("cs")));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>
@@ -32,12 +36,8 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
     app.UseSwagger();
     app.UseSwaggerUI();
-}
 
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
@@ -79,14 +79,15 @@ app.MapGet("/api/ProcessVideo", async (ITranscriptionService transcriptionServic
 
 app.MapGet("/api/startStream", async (IStreamingService streamingService) =>
 {
-    var id = streamingService.StartStream();
+    var id = await streamingService.StartStream();
     return Results.Ok(id);
 }).WithTags("Streaming")
 .Produces(200).Produces(500).Produces<APIResponse<string>>();
 
 app.MapGet("/api/stopStream/{id}", async (IStreamingService streamingService, string id) =>
 {
-    return Results.Ok(streamingService.StopStream(id));
+    var stopStream = await streamingService.StopStream(id);
+    return Results.Ok(stopStream);
 }).WithTags("Streaming")
 .Produces(200).Produces(500).Produces<APIResponse<List<ChunkUploadDTO>>>();
 
@@ -96,6 +97,13 @@ app.MapPost("/api/uploadStream", async (ChunkUploadDTO model, IStreamingService 
     return Results.Ok(model.Id);
 }).WithTags("Streaming")
 .Produces(200).Produces(500).Produces<APIResponse<string>>();
+
+app.MapGet("/api/getStream/{id}", async (IStreamingService streamingService, string id) =>
+{
+    var stream = streamingService.GetStream(id);
+    return Results.Ok(stream);
+}).WithTags("Streaming")
+.Produces(200).Produces<APIResponse<VideoResponse>>().Produces(500);
 
 app.MapPost("/api/uploadStreamInBytes/{id}", async (HttpContext context, IStreamingService streamingService, string id) =>
 {

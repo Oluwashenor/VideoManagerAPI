@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using VideoManagerAPI.Data;
 using VideoManagerAPI.Models;
 using Whisper.net;
 using Whisper.net.Ggml;
@@ -13,9 +14,17 @@ namespace VideoManagerAPI.Services
     public class TranscriptionService : ITranscriptionService
     {
 
+        private readonly AppDbContext _context;
+
+        public TranscriptionService(AppDbContext context)
+        {
+            _context = context;
+        }
+
         public async Task<List<Transcript>> TranscribeVideo(string video)
         {
             var audioName = Path.GetFileNameWithoutExtension(video);
+            var videoId = Path.GetFileNameWithoutExtension(video);
             var filePath = Path.Combine("uploads", $"{video}");
             var wmafile = MediaService.ExtractAudioFromVideo(filePath, $"{audioName}.wma");
             //var wmafile = MediaService.ConvertVideoToAudio(filePath, $"{audioName}.wma");
@@ -49,7 +58,8 @@ namespace VideoManagerAPI.Services
                 {
                     Text = result.Text,
                     Start = result.Start,
-                    End = result.End
+                    End = result.End,
+
                 });
                 Console.WriteLine($"{result.Start}->{result.End}: {result.Text}");
             }
