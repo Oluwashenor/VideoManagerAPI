@@ -72,7 +72,7 @@ app.MapGet("/api/ProcessAudio", async (ITranscriptionService transcriptionServic
 
 app.MapGet("/api/ProcessVideo", async (ITranscriptionService transcriptionService) =>
 {
-    await transcriptionService.TranscribeVideo("Grumpy Monkey Says No- Bedtime Story.mp4");
+    //await transcriptionService.TranscribeVideo("sample.mp4");
     //MediaService.ConvertVideoToAudio("Grumpy Monkey Says No- Bedtime Story.mp4", "grump.wma");
     return Results.Ok();
 }).WithTags("Processings");
@@ -94,6 +94,24 @@ app.MapPost("/api/uploadStream", async (ChunkUploadDTO model, IStreamingService 
 {
     var uploadStream = streamingService.UploadStream(model);
     return Results.Ok(model.Id);
+}).WithTags("Streaming")
+.Produces(200).Produces(500).Produces<APIResponse<string>>();
+
+app.MapPost("/api/uploadStreamInBytes/{id}", async (HttpContext context, IStreamingService streamingService, string id) =>
+{
+    byte[] byteArray;
+    using (MemoryStream ms = new MemoryStream())
+    {
+        await context.Request.Body.CopyToAsync(ms);
+        byteArray = ms.ToArray();
+    }
+    var model = new ChunkUploadDTO()
+    {
+        Chunk = byteArray,
+        Id = id
+    };
+    var uploadStream = streamingService.UploadStreamBytes(model);
+    return Results.Ok();
 }).WithTags("Streaming")
 .Produces(200).Produces(500).Produces<APIResponse<string>>();
 

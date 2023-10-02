@@ -1,4 +1,5 @@
 ﻿using NAudio.Wave;
+using System.Diagnostics;
 
 namespace VideoManagerAPI.Services
 {
@@ -6,12 +7,13 @@ namespace VideoManagerAPI.Services
     {
         public static async Task<string> ConvertMp3ToWave(string mp3, string wav)
         {
+            var filePath = Path.Combine("uploads", wav);
             using (var reader = new AudioFileReader(mp3))
             {
                 using var resampler = new MediaFoundationResampler(reader, new WaveFormat(16000, reader.WaveFormat.Channels));
                 await Task.Run(() =>
                 {
-                    WaveFileWriter.CreateWaveFile(wav, resampler);
+                    WaveFileWriter.CreateWaveFile(filePath, resampler);
                 });
             }
             return wav;
@@ -19,12 +21,24 @@ namespace VideoManagerAPI.Services
 
         public static string ConvertVideoToAudio(string video, string audio)
         {
+            var filePath = Path.Combine("uploads", audio);
             using (var reader = new MediaFoundationReader(video))
             {
-                MediaFoundationEncoder.EncodeToWma(reader, audio);
+                MediaFoundationEncoder.EncodeToWma(reader, filePath);
             }
             return audio;
         }
+
+        public static string ExtractAudioFromVideo(string videoFilePath, string audio)
+         {
+            var filePath = Path.Combine("uploads", audio);
+            using (var reader = new MediaFoundationReader(videoFilePath))
+                 {
+                     var pcmStream = WaveFormatConversionStream.CreatePcmStream(reader); // 16 kHz, 16-bit, mono
+                     WaveFileWriter.CreateWaveFile(filePath, pcmStream);
+                 }
+            return filePath;
+         }
 
         public static async Task<string> ConvertFormVideoToAudio(IFormFile video)
         {

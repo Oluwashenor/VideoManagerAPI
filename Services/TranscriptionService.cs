@@ -1,4 +1,5 @@
-﻿using VideoManagerAPI.Models;
+﻿using System.Diagnostics;
+using VideoManagerAPI.Models;
 using Whisper.net;
 using Whisper.net.Ggml;
 
@@ -12,16 +13,19 @@ namespace VideoManagerAPI.Services
     public class TranscriptionService : ITranscriptionService
     {
 
-        public async Task<List<Transcript>> TranscribeVideo(string VideoPath)
+        public async Task<List<Transcript>> TranscribeVideo(string video)
         {
-            var audioName = Path.GetFileNameWithoutExtension(VideoPath);
-            var wmafile = MediaService.ConvertVideoToAudio(VideoPath, $"{audioName}.wma");
+            var audioName = Path.GetFileNameWithoutExtension(video);
+            var filePath = Path.Combine("uploads", $"{video}");
+            var wmafile = MediaService.ExtractAudioFromVideo(filePath, $"{audioName}.wma");
+            //var wmafile = MediaService.ConvertVideoToAudio(filePath, $"{audioName}.wma");
             var wavFile = await MediaService.ConvertMp3ToWave(wmafile, $"{audioName}.wav");
             return await ProcessTranscript(wavFile);
         }
 
         public async Task<List<Transcript>> ProcessTranscript(string wavFile)
         {
+            wavFile = Path.Combine("uploads", wavFile);
             List<Transcript> transcripts = new List<Transcript>();
             var ggmlType = GgmlType.Base;
             var modelFileName = "ggml-base.bin";
