@@ -4,7 +4,6 @@ namespace VideoManagerAPI.Models
 {
     public class Transcript
     {
-        [Key]
         public int Id { get; set; }
         public string Text { get; set; }
         public TimeSpan Start { get; set; }

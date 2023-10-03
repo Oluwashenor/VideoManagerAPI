@@ -1,3 +1,4 @@
+using Exceptionless;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VideoManagerAPI.Data;
@@ -7,6 +8,12 @@ using VideoManagerAPI.Repository;
 using VideoManagerAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+//builder.Host.ConfigureLogging(logging =>
+//{
+//    logging.ClearProviders();
+//    logging.AddDebug();
+//    logging.AddFile("logs/app.log");
+//});
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -18,14 +25,17 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
 });
 
+builder.Services.AddExceptionless("h0Ei4DuXml3wSbmoGQl9rUWy5FvZvpZ87btWaiRQ");
+
+
 var configuration = builder.Configuration;
-builder.Services.Configure<WasabiCredentials>(configuration.GetSection("WasabiKeys"));
+//builder.Services.Configure<WasabiCredentials>(configuration.GetSection("WasabiKeys"));
 builder.Services.AddScoped<FileUploader>();
 builder.Services.AddScoped<IResponseService, ResponseService>();
 builder.Services.AddScoped<ITranscriptionService, TranscriptionService>();
 builder.Services.AddScoped<IStreamingService, StreamingService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
-options.UseSqlite(configuration.GetConnectionString("cs")));
+options.UseSqlServer(configuration.GetConnectionString("constringRemote")));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>
@@ -35,15 +45,17 @@ builder.Services.AddCors(options =>
 });
 var app = builder.Build();
 
-
-    app.UseSwagger();
-    app.UseSwaggerUI();
+app.UseSwagger();
+app.UseSwaggerUI();
+app.UseExceptionless();
 
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 
 
-app.MapPost("/api/uploadVideo", async (HttpContext context,FileUploader fileUploader) =>
+
+
+app.MapPost("/api/uploadVideo", async (HttpContext context, FileUploader fileUploader) =>
 {
     try
     {
@@ -55,30 +67,33 @@ app.MapPost("/api/uploadVideo", async (HttpContext context,FileUploader fileUplo
         var file = form.Files[0];
         return Results.Ok(await fileUploader.Processor(file));
     }
-    catch(Exception ex)
+    catch (Exception ex)
     {
         Console.WriteLine(ex.ToString());
         return Results.Problem($"Upload Failed : {ex.Message.ToString()}");
     }
-   
-}).WithTags("Uploads")
+
+}).WithTags("Uploads").ExcludeFromDescription()
 .Produces(200).Produces(400).Produces(500).Produces<APIResponse<string>>();
 
 app.MapGet("/api/ProcessAudio", async (ITranscriptionService transcriptionService) =>
 {
-    await transcriptionService.ProcessTranscript(@"Grumpy Monkey Says No- Bedtime Story.mp3");
+    await transcriptionService.ProcessTranscript(@"output_audio.wav");
     return Results.Ok();
-}).WithTags("Processings");
+}).WithTags("Processings").ExcludeFromDescription();
 
-app.MapGet("/api/ProcessVideo", async (ITranscriptionService transcriptionService) =>
+app.MapGet("/api/ProcessVideo", (ITranscriptionService transcriptionService) =>
 {
     //await transcriptionService.TranscribeVideo("sample.mp4");
     //MediaService.ConvertVideoToAudio("Grumpy Monkey Says No- Bedtime Story.mp4", "grump.wma");
     return Results.Ok();
-}).WithTags("Processings");
+}).WithTags("Processings").ExcludeFromDescription();
 
-app.MapGet("/api/startStream", async (IStreamingService streamingService) =>
+app.MapGet("/api/startStream", async ( IStreamingService streamingService) =>
 {
+    //// ILoggerFactory logfac,
+    //// var logger = logfac.CreateLogger("index");
+    //// logger.LogInformation("Sample");
     var id = await streamingService.StartStream();
     return Results.Ok(id);
 }).WithTags("Streaming")
@@ -93,17 +108,19 @@ app.MapGet("/api/stopStream/{id}", async (IStreamingService streamingService, st
 
 app.MapPost("/api/uploadStream", async (ChunkUploadDTO model, IStreamingService streamingService) =>
 {
-    var uploadStream = streamingService.UploadStream(model);
+    var uploadStream = await streamingService.UploadStream(model);
     return Results.Ok(model.Id);
 }).WithTags("Streaming")
 .Produces(200).Produces(500).Produces<APIResponse<string>>();
 
 app.MapGet("/api/getStream/{id}", async (IStreamingService streamingService, string id) =>
 {
-    var stream = streamingService.GetStream(id);
+    var stream = await streamingService.GetStream(id);
     return Results.Ok(stream);
 }).WithTags("Streaming")
 .Produces(200).Produces<APIResponse<VideoResponse>>().Produces(500);
+
+app.UseDeveloperExceptionPage();
 
 app.MapPost("/api/uploadStreamInBytes/{id}", async (HttpContext context, IStreamingService streamingService, string id) =>
 {

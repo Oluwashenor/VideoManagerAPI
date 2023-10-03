@@ -1,7 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using VideoManagerAPI.Data;
-using VideoManagerAPI.Migrations;
 using VideoManagerAPI.Models;
 using VideoManagerAPI.Models.DTO;
 using VideoManagerAPI.Repository;
@@ -123,7 +121,7 @@ namespace VideoManagerAPI.Services
 
         public async Task<APIResponse<string>> UploadStreamBytes(ChunkUploadDTO model)
         {
-            var videoExist = await _appDbContext.videos.FirstOrDefaultAsync(x=>x.Id == model.Id);
+            var videoExist = await _appDbContext.Videos.FirstOrDefaultAsync(x=>x.Id == model.Id);
             if (videoExist == default)
                 return _responseService.ErrorResponse<string>("Invalid Video Sent");
             chunks?.Add(model);
@@ -132,7 +130,7 @@ namespace VideoManagerAPI.Services
 
         public async Task<APIResponse<string>> UploadStream(ChunkUploadDTO model)
         {
-            var videoExist = await _appDbContext.videos.FirstOrDefaultAsync(x => x.Id == model.Id);
+            var videoExist = await _appDbContext.Videos.FirstOrDefaultAsync(x => x.Id == model.Id);
             if (videoExist == default)
                 return _responseService.ErrorResponse<string>("Invalid Video Sent");
             chunks?.Add(model);
@@ -141,19 +139,36 @@ namespace VideoManagerAPI.Services
 
         public async Task<APIResponse<VideoResponse>> GetStream(string id)
         {
-            var videoExist = await _appDbContext.videos.Where(x => x.Id == id).Include(x=>x.Transcripts).FirstOrDefaultAsync();
+            var response = new VideoResponse();
+            Video? videoExist = new Video();
+            try
+            {
+                videoExist = await _appDbContext.Videos.Where(x => x.Id == id).Include(x=>x.Transcripts).FirstOrDefaultAsync();
+            }
+            catch  (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+            
             if (videoExist == default)
                 return _responseService.ErrorResponse<VideoResponse>("Invalid Video Sent");
             string absoluteFilePath = Path.Combine(Directory.GetCurrentDirectory(), @"uploads\", $"{id}.mp4");
 
             var path = Path.Combine("uploads", $"{id}.mp4");
-           // var url = "https://localhost:7056/" + absoluteFilePath;
-            var response = new VideoResponse()
+            if (!File.Exists(path))
             {
-                Id = id,
-                Transcripts = videoExist.Transcripts,
-                Url = absoluteFilePath,
+                response.Id = id;
+                response.Transcripts = default;
+                response.Url = "";
+                return _responseService.ErrorResponse<VideoResponse>("Video Not Ready");
             };
+                
+            
+        // var url = "https://localhost:7056/" + absoluteFilePath;
+
+            response.Id = id;
+            response.Transcripts = videoExist.Transcripts;
+            response.Url = absoluteFilePath;
             return _responseService.SuccessResponse(response);
         }
 
