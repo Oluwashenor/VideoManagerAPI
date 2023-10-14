@@ -4,7 +4,7 @@ namespace VideoManagerAPI.Repository
 {
     public class ResponseService : IResponseService
     {
-        public APIResponse<T> ErrorResponse<T>(string message = null)
+        public APIResponse<T> ErrorResponse<T>(string? message = null)
         {
             return new APIResponse<T>
             {
@@ -13,7 +13,7 @@ namespace VideoManagerAPI.Repository
             };
         }
 
-        public APIResponse<T> SuccessResponse<T>(T data, string message = null)
+        public APIResponse<T> SuccessResponse<T>(T data, string? message = null)
         {
             return new APIResponse<T>
             {

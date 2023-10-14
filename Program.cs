@@ -1,5 +1,6 @@
 using Exceptionless;
-using Microsoft.AspNetCore.Mvc;
+using Hangfire;
+using Hangfire.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using VideoManagerAPI.Data;
 using VideoManagerAPI.Models;
@@ -8,12 +9,6 @@ using VideoManagerAPI.Repository;
 using VideoManagerAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-//builder.Host.ConfigureLogging(logging =>
-//{
-//    logging.ClearProviders();
-//    logging.AddDebug();
-//    logging.AddFile("logs/app.log");
-//});
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -34,8 +29,26 @@ builder.Services.AddScoped<FileUploader>();
 builder.Services.AddScoped<IResponseService, ResponseService>();
 builder.Services.AddScoped<ITranscriptionService, TranscriptionService>();
 builder.Services.AddScoped<IStreamingService, StreamingService>();
+builder.Services.AddScoped<IMediaService, MediaService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
-options.UseSqlServer(configuration.GetConnectionString("constringRemote")));
+options.UseSqlServer(configuration.GetConnectionString("constring")));
+
+builder.Services.AddHangfire(configuration => configuration
+       //.UseFilter(new AutomaticRetryAttribute{ Attempts = 0 })
+       .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+       .UseSimpleAssemblyNameTypeSerializer()
+       .UseRecommendedSerializerSettings()
+       .UseSqlServerStorage(builder.Configuration.GetConnectionString("constringHangFire"), new SqlServerStorageOptions
+       {
+           CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+           SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+           QueuePollInterval = TimeSpan.Zero,
+           UseRecommendedIsolationLevel = true,
+           DisableGlobalLocks = true
+       }));
+
+builder.Services.AddHangfireServer();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>
@@ -89,11 +102,17 @@ app.MapGet("/api/ProcessVideo", (ITranscriptionService transcriptionService) =>
     return Results.Ok();
 }).WithTags("Processings").ExcludeFromDescription();
 
+app.MapGet("/api/ProcessVideoInBG", (ITranscriptionService transcriptionService) =>
+{
+    var bJClient = new BackgroundJobClient();
+    bJClient.Enqueue(() => transcriptionService.TranscribeAndSave("Grumpy Monkey Says No- Bedtime Story.mp4"));
+    //await transcriptionService.TranscribeVideo("sample.mp4");
+    //MediaService.ConvertVideoToAudio("Grumpy Monkey Says No- Bedtime Story.mp4", "grump.wma");
+    return Results.Ok();
+}).WithTags("Processings");
+
 app.MapGet("/api/startStream", async ( IStreamingService streamingService) =>
 {
-    //// ILoggerFactory logfac,
-    //// var logger = logfac.CreateLogger("index");
-    //// logger.LogInformation("Sample");
     var id = await streamingService.StartStream();
     return Results.Ok(id);
 }).WithTags("Streaming")
@@ -135,8 +154,8 @@ app.MapPost("/api/uploadStreamInBytes/{id}", async (HttpContext context, IStream
         Chunk = byteArray,
         Id = id
     };
-    var uploadStream = streamingService.UploadStreamBytes(model);
-    return Results.Ok();
+    var uploadStream = await streamingService.UploadStreamBytes(model);
+    return Results.Ok(uploadStream);
 }).WithTags("Streaming")
 .Produces(200).Produces(500).Produces<APIResponse<string>>();
 

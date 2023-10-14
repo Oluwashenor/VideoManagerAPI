@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Hangfire;
+using Microsoft.EntityFrameworkCore;
 using VideoManagerAPI.Data;
 using VideoManagerAPI.Models;
 using VideoManagerAPI.Models.DTO;
@@ -22,12 +23,7 @@ namespace VideoManagerAPI.Services
 
         public async Task<APIResponse<string>> StartStream()
         {
-            var video = new Video
-            {
-
-                Created = DateTime.Now,
-                Id = Guid.NewGuid().ToString()
-            };
+            Video video = new();
             await _appDbContext.AddAsync(video);
             if(await _appDbContext.SaveChangesAsync() > 0)
                 return _responseService.SuccessResponse(video.Id);
@@ -40,39 +36,30 @@ namespace VideoManagerAPI.Services
                 Id = id
             };
             var streamChunks = chunks?.Where(x=>x.Id == id).ToList();
-            chunks = chunks.Except(streamChunks).ToList();
+            chunks = chunks?.Except(streamChunks).ToList();
             if (!streamChunks.Any()) return _responseService.ErrorResponse<VideoResponse>("Invalid Id");
             var processor = new APIResponse<string>();
             if(streamChunks.First().Chunk == default)
             {
-              processor = ProcessStreams(streamChunks);
+              processor = await ProcessStreams(streamChunks);
             }
             else
             {
-              processor = ProcessByteStreams(streamChunks);
+              processor = await ProcessByteStreams(streamChunks);
             }
                 
             if (processor.Status)
             {
-                var transcripts = await _transcriptionService.TranscribeVideo(processor.Data);
-                string videoId = Path.GetFileNameWithoutExtension(processor.Data);
-                if (transcripts.Count > 0)
+                try
                 {
-                    foreach (var transcript in transcripts)
-                    {
-                        transcript.VideoId = videoId;
-                    }
-                    try
-                    {
-                        await _appDbContext.AddRangeAsync(transcripts);
-                        var saved = await _appDbContext.SaveChangesAsync() > 0;   
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message.ToString());
-                        return _responseService.ErrorResponse<VideoResponse>("Something went wrong");
-                    }
+                    var bJClient = new BackgroundJobClient();
+                    bJClient.Enqueue(() => _transcriptionService.TranscribeAndSave(processor.Data));
                 }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+               
                 response.Url = processor.Data;
                 response.Transcripts = default;
                 return _responseService.SuccessResponse(response);
@@ -80,7 +67,7 @@ namespace VideoManagerAPI.Services
             return _responseService.ErrorResponse<VideoResponse>("Unable to Process your Request"); ;
         }
 
-        private APIResponse<string> ProcessStreams(List<ChunkUploadDTO> streamChunks)
+        private async Task<APIResponse<string>> ProcessStreams(List<ChunkUploadDTO> streamChunks)
         {
             var videoname = streamChunks.First().Id;
             List<byte> videoBytesList = new List<byte>();
@@ -96,11 +83,11 @@ namespace VideoManagerAPI.Services
                 Directory.CreateDirectory("uploads");
             }
             var filePath = Path.Combine("uploads", $"{videoname}.mp4");
-            File.WriteAllBytes(filePath, videoBytesList.ToArray());
+            await File.WriteAllBytesAsync(filePath, videoBytesList.ToArray());
             return _responseService.SuccessResponse($"{videoname}.mp4");
         }
 
-        private APIResponse<string> ProcessByteStreams(List<ChunkUploadDTO> streamChunks)
+        private async Task<APIResponse<string>> ProcessByteStreams(List<ChunkUploadDTO> streamChunks)
         {
             var videoname = streamChunks.First().Id;
             byte[] videoBytes = new byte[0];
@@ -113,12 +100,10 @@ namespace VideoManagerAPI.Services
                 Directory.CreateDirectory("uploads");
             }
             var filePath = Path.Combine("uploads", $"{videoname}.mp4");
-            File.WriteAllBytes(filePath, videoBytes);
-
+            await File.WriteAllBytesAsync(filePath, videoBytes);
             return _responseService.SuccessResponse($"{videoname}.mp4");
         }
-
-
+        
         public async Task<APIResponse<string>> UploadStreamBytes(ChunkUploadDTO model)
         {
             var videoExist = await _appDbContext.Videos.FirstOrDefaultAsync(x=>x.Id == model.Id);
@@ -141,19 +126,10 @@ namespace VideoManagerAPI.Services
         {
             var response = new VideoResponse();
             Video? videoExist = new Video();
-            try
-            {
-                videoExist = await _appDbContext.Videos.Where(x => x.Id == id).Include(x=>x.Transcripts).FirstOrDefaultAsync();
-            }
-            catch  (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
-            
+            videoExist = await _appDbContext.Videos.Where(x => x.Id == id).Include(x=>x.Transcripts).FirstOrDefaultAsync();
             if (videoExist == default)
-                return _responseService.ErrorResponse<VideoResponse>("Invalid Video Sent");
+                return _responseService.ErrorResponse<VideoResponse>("Video not Found");
             string absoluteFilePath = Path.Combine(Directory.GetCurrentDirectory(), @"uploads\", $"{id}.mp4");
-
             var path = Path.Combine("uploads", $"{id}.mp4");
             if (!File.Exists(path))
             {
@@ -162,10 +138,6 @@ namespace VideoManagerAPI.Services
                 response.Url = "";
                 return _responseService.ErrorResponse<VideoResponse>("Video Not Ready");
             };
-                
-            
-        // var url = "https://localhost:7056/" + absoluteFilePath;
-
             response.Id = id;
             response.Transcripts = videoExist.Transcripts;
             response.Url = absoluteFilePath;

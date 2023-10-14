@@ -9,8 +9,8 @@ namespace VideoManagerAPI.Data
         {
 
         }
-        public DbSet<Video> Videos { get; set; }
-        public DbSet<Transcript> Transcripts { get; set; }
+        public DbSet<Video>? Videos { get; set; }
+        public DbSet<Transcript>? Transcripts { get; set; }
        
     }
 }

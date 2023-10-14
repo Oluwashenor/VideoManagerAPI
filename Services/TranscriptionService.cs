@@ -1,38 +1,74 @@
-﻿using System.Diagnostics;
+﻿using Hangfire;
+using System.Diagnostics;
 using VideoManagerAPI.Data;
 using VideoManagerAPI.Models;
+using VideoManagerAPI.Repository;
 using Whisper.net;
 using Whisper.net.Ggml;
 
 namespace VideoManagerAPI.Services
 {
-    public interface ITranscriptionService
+	public interface ITranscriptionService
+	{
+		Task<APIResponse<List<Transcript>>> ProcessTranscript(string wavFile);
+		Task<APIResponse<bool>> TranscribeAndSave(string video);
+		Task<APIResponse<List<Transcript>>> TranscribeVideo(string video);
+	}
+	public class TranscriptionService : ITranscriptionService
     {
-        Task<List<Transcript>> ProcessTranscript(string file);
-        Task<List<Transcript>> TranscribeVideo(string VideoPath);
-    }
-    public class TranscriptionService : ITranscriptionService
-    {
+        private readonly AppDbContext _appDbContext;
+        private readonly IMediaService _mediaService;
+        private readonly IResponseService _responseService;
 
-        private readonly AppDbContext _context;
+		public TranscriptionService(AppDbContext appDbContext, IMediaService mediaService, IResponseService responseService)
+		{
+			_appDbContext = appDbContext;
+			_mediaService = mediaService;
+            _responseService = responseService;
+		}
 
-        public TranscriptionService(AppDbContext context)
+		public async Task<APIResponse<bool>> TranscribeAndSave(string video)
         {
-            _context = context;
+            var transcription = await TranscribeVideo(video);
+            if (!transcription.Status) return _responseService.ErrorResponse<bool>(transcription.Message);
+            var transcripts = transcription.Data;
+            var videoId = Path.GetFileNameWithoutExtension(video);
+            if (transcripts.Any())
+            {
+                foreach (var transcript in transcripts)
+                {
+                    transcript.VideoId = videoId;
+                }
+                try
+                {
+                    await _appDbContext.AddRangeAsync(transcripts);
+                    var saved = await _appDbContext.SaveChangesAsync() > 0;
+                    return saved ? _responseService.SuccessResponse(true) : _responseService.ErrorResponse<bool>("Unable to save your transcripts");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message.ToString());
+                    return _responseService.ErrorResponse<bool>("Unable to save your transcripts");
+                }
+            }
+            return _responseService.ErrorResponse<bool>("Unable to transcribe your video");
         }
 
-        public async Task<List<Transcript>> TranscribeVideo(string video)
+
+        public async Task<APIResponse<List<Transcript>>> TranscribeVideo(string video)
         {
             var audioName = Path.GetFileNameWithoutExtension(video);
-            var videoId = Path.GetFileNameWithoutExtension(video);
             var filePath = Path.Combine("uploads", $"{video}");
-            var wmafile = MediaService.ExtractAudioFromVideo(filePath, $"{audioName}.wma");
-            //var wmafile = MediaService.ConvertVideoToAudio(filePath, $"{audioName}.wma");
-            var wavFile = await MediaService.ConvertMp3ToWave(wmafile, $"{audioName}.wav");
-            return await ProcessTranscript(wavFile);
-        }
+            var convertToWMA = _mediaService.ExtractAudioFromVideo(filePath, $"{audioName}.wma");
+            if (!convertToWMA.Status) return _responseService.ErrorResponse<List<Transcript>>(convertToWMA.Message);
+            var convertToWav = await _mediaService.ConvertMp3ToWave(convertToWMA.Data, $"{audioName}.wav");
+			if (!convertToWav.Status) return _responseService.ErrorResponse<List<Transcript>>(convertToWav.Message);
+			var transcriptProcessor = await ProcessTranscript(convertToWav?.Data);
+            return transcriptProcessor;
 
-        public async Task<List<Transcript>> ProcessTranscript(string wavFile)
+		}
+
+        public async Task<APIResponse<List<Transcript>>> ProcessTranscript(string wavFile)
         {
             wavFile = Path.Combine("uploads", wavFile);
             List<Transcript> transcripts = new List<Transcript>();
@@ -49,21 +85,28 @@ namespace VideoManagerAPI.Services
             if (!File.Exists(wavFile))
             {
                 Console.WriteLine("File not found");
-                return default;
+                return _responseService.ErrorResponse<List<Transcript>>("Wav file not found");
             }
             using var fileStream = File.OpenRead(wavFile);
             await foreach (var result in processor.ProcessAsync(fileStream))
             {
-                transcripts.Add(new Transcript
+                transcripts.Add(new Transcript()
                 {
                     Text = result.Text,
                     Start = result.Start,
                     End = result.End,
-
                 });
                 Console.WriteLine($"{result.Start}->{result.End}: {result.Text}");
             }
-            return transcripts;
+            try
+            {
+				return _responseService.SuccessResponse(transcripts);
+			}
+            catch(Exception ex)
+            {
+                return default;
+            }
+          
         }
 
         private static async Task DownloadModel(string fileName, GgmlType ggmlType)
@@ -73,6 +116,5 @@ namespace VideoManagerAPI.Services
             using var fileWriter = File.OpenWrite(fileName);
             await modelStream.CopyToAsync(fileWriter);
         }
-
     }
 }
