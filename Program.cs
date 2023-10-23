@@ -32,14 +32,14 @@ builder.Services.AddScoped<ITranscriptionService, TranscriptionService>();
 builder.Services.AddScoped<IStreamingService, StreamingService>();
 builder.Services.AddScoped<IMediaService, MediaService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
-options.UseSqlServer(configuration.GetConnectionString("constring")));
+options.UseSqlServer(configuration.GetConnectionString("constringRemote")));
 
 builder.Services.AddHangfire(configuration => configuration
        //.UseFilter(new AutomaticRetryAttribute{ Attempts = 0 })
        .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
        .UseSimpleAssemblyNameTypeSerializer()
        .UseRecommendedSerializerSettings()
-       .UseSqlServerStorage(builder.Configuration.GetConnectionString("constringHangFire"), new SqlServerStorageOptions
+       .UseSqlServerStorage(builder.Configuration.GetConnectionString("constringRemote"), new SqlServerStorageOptions
        {
            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
