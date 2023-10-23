@@ -11,7 +11,8 @@ namespace VideoManagerAPI.Services
     {
         private readonly IResponseService _responseService;
         private readonly ITranscriptionService _transcriptionService;
-        private static List<ChunkUploadDTO>? chunks = new();
+        private static List<ChunkUploadStringDTO> chunksStrings = new();
+        private static List<ChunkUploadByteDTO> chunksBytes = new();
         private readonly AppDbContext _appDbContext;
 
         public StreamingService(IResponseService responseService, ITranscriptionService transcriptionService, AppDbContext appDbContext)
@@ -32,22 +33,26 @@ namespace VideoManagerAPI.Services
 
         public async Task<APIResponse<VideoResponse>> StopStream(string id)
         {
+            var processor = new APIResponse<string>();
             var response = new VideoResponse() { 
                 Id = id
             };
-            var streamChunks = chunks?.Where(x=>x.Id == id).ToList();
-            chunks = chunks?.Except(streamChunks).ToList();
-            if (!streamChunks.Any()) return _responseService.ErrorResponse<VideoResponse>("Invalid Id");
-            var processor = new APIResponse<string>();
-            if(streamChunks.First().Chunk == default)
+            List<ChunkUploadByteDTO> streamBytesChunks = chunksBytes.Where(x=>x.Id == id).ToList();
+            List<ChunkUploadStringDTO> streamStringChunks = chunksStrings.Where(x=>x.Id == id).ToList();
+            if (streamBytesChunks.Any())
             {
-              processor = await ProcessStreams(streamChunks);
+                chunksBytes = chunksBytes.Except(streamBytesChunks).ToList();
+                processor = await ProcessByteStreams(streamBytesChunks);
+            }
+            else if (streamStringChunks.Any())
+            {
+                chunksStrings = chunksStrings.Except(streamStringChunks).ToList();
+                processor = await ProcessStreams(streamStringChunks);
             }
             else
             {
-              processor = await ProcessByteStreams(streamChunks);
+                return _responseService.ErrorResponse<VideoResponse>("Invalid Id Passed");
             }
-                
             if (processor.Status)
             {
                 try
@@ -67,9 +72,9 @@ namespace VideoManagerAPI.Services
             return _responseService.ErrorResponse<VideoResponse>("Unable to Process your Request"); ;
         }
 
-        private async Task<APIResponse<string>> ProcessStreams(List<ChunkUploadDTO> streamChunks)
+        private async Task<APIResponse<string>> ProcessStreams(List<ChunkUploadStringDTO> streamChunks)
         {
-            var videoname = streamChunks.First().Id;
+            var videoName = streamChunks.First().Id;
             List<byte> videoBytesList = new List<byte>();
             foreach (var chunk in streamChunks)
             {
@@ -82,14 +87,14 @@ namespace VideoManagerAPI.Services
             {
                 Directory.CreateDirectory("uploads");
             }
-            var filePath = Path.Combine("uploads", $"{videoname}.mp4");
+            var filePath = Path.Combine("uploads", $"{videoName}.mp4");
             await File.WriteAllBytesAsync(filePath, videoBytesList.ToArray());
-            return _responseService.SuccessResponse($"{videoname}.mp4");
+            return _responseService.SuccessResponse($"{videoName}.mp4");
         }
 
-        private async Task<APIResponse<string>> ProcessByteStreams(List<ChunkUploadDTO> streamChunks)
+        private async Task<APIResponse<string>> ProcessByteStreams(List<ChunkUploadByteDTO> streamChunks)
         {
-            var videoname = streamChunks.First().Id;
+            var videoName = streamChunks.First().Id;
             byte[] videoBytes = new byte[0];
             foreach (var chunk in streamChunks)
             {
@@ -99,27 +104,27 @@ namespace VideoManagerAPI.Services
             {
                 Directory.CreateDirectory("uploads");
             }
-            var filePath = Path.Combine("uploads", $"{videoname}.mp4");
+            var filePath = Path.Combine("uploads", $"{videoName}.mp4");
             await File.WriteAllBytesAsync(filePath, videoBytes);
-            return _responseService.SuccessResponse($"{videoname}.mp4");
+            return _responseService.SuccessResponse($"{videoName}.mp4");
         }
         
-        public async Task<APIResponse<string>> UploadStreamBytes(ChunkUploadDTO model)
+        public async Task<APIResponse<string>> UploadStreamBytes(ChunkUploadByteDTO model)
         {
             var videoExist = await _appDbContext.Videos.FirstOrDefaultAsync(x=>x.Id == model.Id);
             if (videoExist == default)
-                return _responseService.ErrorResponse<string>("Invalid Video Sent");
-            chunks?.Add(model);
-            return _responseService.SuccessResponse("Successful operation");
+                return _responseService.ErrorResponse<string>("Invalid Video Id Sent, Please verify and try again");
+            chunksBytes?.Add(model);
+            return _responseService.SuccessResponse("Streamed chunk received and saved successfully");
         }
 
-        public async Task<APIResponse<string>> UploadStream(ChunkUploadDTO model)
+        public async Task<APIResponse<string>> UploadStream(ChunkUploadStringDTO model)
         {
             var videoExist = await _appDbContext.Videos.FirstOrDefaultAsync(x => x.Id == model.Id);
             if (videoExist == default)
-                return _responseService.ErrorResponse<string>("Invalid Video Sent");
-            chunks?.Add(model);
-            return _responseService.SuccessResponse("Successful operation");
+                return _responseService.ErrorResponse<string>("Invalid video id sent, Please verify and try again");
+            chunksStrings?.Add(model);
+            return _responseService.SuccessResponse("Streamed chunk received and saved successfully");
         }
 
         public async Task<APIResponse<VideoResponse>> GetStream(string id)
@@ -143,7 +148,6 @@ namespace VideoManagerAPI.Services
             response.Url = absoluteFilePath;
             return _responseService.SuccessResponse(response);
         }
-
     }
 
     public interface IStreamingService
@@ -151,7 +155,7 @@ namespace VideoManagerAPI.Services
         Task<APIResponse<VideoResponse>> GetStream(string id);
         Task<APIResponse<string>> StartStream();
         Task<APIResponse<VideoResponse>> StopStream(string id);
-        Task<APIResponse<string>> UploadStream(ChunkUploadDTO model);
-        Task<APIResponse<string>> UploadStreamBytes(ChunkUploadDTO model);
+        Task<APIResponse<string>> UploadStream(ChunkUploadStringDTO model);
+        Task<APIResponse<string>> UploadStreamBytes(ChunkUploadByteDTO model);
     }
 }

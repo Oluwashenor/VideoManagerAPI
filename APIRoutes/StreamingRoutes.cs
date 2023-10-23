@@ -9,27 +9,27 @@ namespace VideoManagerAPI.APIRoutes
     {
         public static IEndpointRouteBuilder MapStreamingRoutes(this IEndpointRouteBuilder builder)
         {
-            builder.MapGet("/api/startStream", async (IStreamingService streamingService) =>
+            builder.MapGet("/api/StartStream", async (IStreamingService streamingService) =>
             {
-                var id = await streamingService.StartStream();
-                return Results.Ok(id);
+                var response = await streamingService.StartStream();
+                return Results.Ok(response);
             }).WithTags("Streaming").Produces(200).Produces(500).Produces<APIResponse<string>>();
 
-            builder.MapGet("/api/stopStream/{id}", async (IStreamingService streamingService, string id) =>
+            builder.MapGet("/api/StopStream/{id}", async (IStreamingService streamingService, string id) =>
             {
                 var stopStream = await streamingService.StopStream(id);
                 return Results.Ok(stopStream);
             }).WithTags("Streaming")
-            .Produces(200).Produces(500).Produces<APIResponse<List<ChunkUploadDTO>>>();
+            .Produces(200).Produces(500).Produces<APIResponse<VideoResponse>>();
 
-            builder.MapGet("/api/getStream/{id}", async (IStreamingService streamingService, string id) =>
+            builder.MapGet("/api/GetStream/{id}", async (IStreamingService streamingService, string id) =>
             {
                 var stream = await streamingService.GetStream(id);
                 return Results.Ok(stream);
             }).WithTags("Streaming")
             .Produces(200).Produces<APIResponse<VideoResponse>>().Produces(500);
 
-            builder.MapPost("/api/uploadStreamInBytes/{id}", async (HttpContext context, IStreamingService streamingService, string id) =>
+            builder.MapPost("/api/UploadStreamInBytes/{id}", async (HttpContext context, IStreamingService streamingService, string id) =>
             {
                 byte[] byteArray;
                 using (MemoryStream ms = new MemoryStream())
@@ -37,7 +37,7 @@ namespace VideoManagerAPI.APIRoutes
                     await context.Request.Body.CopyToAsync(ms);
                     byteArray = ms.ToArray();
                 }
-                var model = new ChunkUploadDTO()
+                var model = new ChunkUploadByteDTO()
                 {
                     Chunk = byteArray,
                     Id = id
@@ -46,7 +46,7 @@ namespace VideoManagerAPI.APIRoutes
                 return Results.Ok(uploadStream);
             }).WithTags("Streaming").Produces(200).Produces(500).Produces<APIResponse<string>>();
 
-            builder.MapPost("/api/uploadStream", async (ChunkUploadDTO model, IStreamingService streamingService) =>
+            builder.MapPost("/api/UploadStreamInString", async (ChunkUploadStringDTO model, IStreamingService streamingService) =>
             {
                 var uploadStream = await streamingService.UploadStream(model);
                 return Results.Ok(model.Id);
