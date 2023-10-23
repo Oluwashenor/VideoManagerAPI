@@ -10,9 +10,16 @@ This project is an API built using C# ASP.Net Core, it connects to frontend appl
 - Can transcribe videos to text
 - Persistent Storage for transcriptions and videos 
 - Fast and Efficient
+- 
+
+
 
 
 ## API Reference
+
+```
+https://adesina.bsite.net/swagger/index.html
+```
 
 #### Start Stream
 
